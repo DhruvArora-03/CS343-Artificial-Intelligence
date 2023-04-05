@@ -452,9 +452,12 @@ class JointParticleFilter(ParticleFilter):
         should be evenly distributed across positions in order to ensure a
         uniform prior.
         """
-        self.particles = []
         "*** YOUR CODE HERE ***"
-        itertools.product()
+        permutations = list(itertools.product(self.legalPositions, repeat = self.numGhosts))
+        random.shuffle(permutations)
+        remainder = self.numParticles % len(permutations)
+        num_times = int(self.numParticles / (len(permutations) - remainder))
+        self.particles = permutations * num_times + permutations[:remainder]
         
 
     def addGhostAgent(self, agent):
@@ -488,7 +491,25 @@ class JointParticleFilter(ParticleFilter):
         the DiscreteDistribution may be useful.
         """
         "*** YOUR CODE HERE ***"
-        raiseNotDefined()
+        dist = DiscreteDistribution()
+        pacPos = gameState.getPacmanPosition()
+        # find dist for each possible position
+        for p in self.particles:
+            prob = 1
+            # any ghost could be here:
+            for i in range(self.numGhosts):
+                prob *= self.getObservationProb(observation[i], pacPos, p[i], self.getJailPosition(i))
+            
+            # update dist for this potential position
+            dist[p] +=  prob
+            
+        # handle 0 case
+        if dist.total() == 0:
+            self.initializeUniformly(gameState)
+        else:
+            # move particles to follow new dist
+            for i in range(len(self.particles)):
+                self.particles[i] = dist.sample()
 
     def elapseTime(self, gameState):
         """
@@ -501,7 +522,9 @@ class JointParticleFilter(ParticleFilter):
 
             # now loop through and update each entry in newParticle...
             "*** YOUR CODE HERE ***"
-            raiseNotDefined()
+            for i in range(self.numGhosts):
+                newPosDist = self.getPositionDistribution(gameState, newParticle, i, self.ghostAgents[i])
+                newParticle[i] = newPosDist.sample()
 
             """*** END YOUR CODE HERE ***"""
             newParticles.append(tuple(newParticle))
